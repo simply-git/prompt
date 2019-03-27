@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+# contains various functions to bring the status of a Git repository to
+# the command prompt
+GITPROMPT="git-prompt.sh"
+GITURL="https://raw.githubusercontent.com/git/git/master/contrib/completion/"
+
+download_git_prompt_file() {
+    # a simple function to download the git-prompt.sh file from the Git's 
+    # source code repository
+    WGET=$(command -v wget)
+    CURL=$(command -v curl)
+    if [[ -n $WGET ]]; then
+        echo "Download git-prompt.sh using wget"
+        $WGET $GITURL$GITPROMPT
+    elif [[ -n $CURL ]]; then
+        echo "Download git-prompt.sh using curl"
+        $CURL $GITURL$GITPROMPT --output $GITPROMPT
+    else
+        echo "Both wget and curl utilities are not available"
+        echo "You can either download $GITURL$GITPROMPT directly and put it on"
+        echo "the same directory as this script, or install wget or curl"
+        echo "before executing this script again"
+    fi
+}
+
+simply_git_prompt() {
+    # A simple function to make the command prompt more Git friendly
+
+    # show whether the working directory is dirty
+    # * has unstaged changes
+    # + has staged changes
+    # # empty repository
+    export GIT_PS1_SHOWDIRTYSTATE=1
+    # % if untracked files are available
+    export GIT_PS1_SHOWUNTRACKEDFILES=1
+    # $ if something is stashed
+    export GIT_PS1_SHOWSTASHSTATE=1
+
+    # reset color
+    RESET='\[\033[0m\]'
+    # username in bold text, green
+    USERNAME='\[\033[1m\]\[\033[32m\]\u'
+    # working directory in bold text and purple, enclosed with []
+    WORKINGDIR='\[\033[1m\]\[\033[35m\]\w'
+    # info line, username and working directory
+    INFOLINE='\n'$USERNAME$RESET' ['$WORKINGDIR$RESET']\n'
+    # git prompt in cyan
+    PROMPT='\[\033[36m\]$(__git_ps1 "(%s) ")'
+    export PS1=$INFOLINE$PROMPT$RESET'\$ '
+}
+
+if declare -F __git_ps1 >/dev/null 2>&1; then
+    # if the __git_ps1 function is already loaded, for example, in Git for
+    # Windows, just call the simply_git_prompt
+    simply_git_prompt
+else
+    # download git-prompt.sh if it is not available
+    if [[ ! -e $GITPROMPT ]]; then
+        download_git_prompt_file
+    fi
+    # set up the command prompt
+    if [[ -e $GITPROMPT ]]; then
+        # add git prompt functions provided by Git
+        source $GITPROMPT
+
+        simply_git_prompt
+    fi
+fi
